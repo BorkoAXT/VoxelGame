@@ -1,0 +1,14 @@
+[package]
+name = "VoxelGame"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.104"
+backon = "1.6.0"
+bytemuck = "1.25.2"
+glam = "0.33.6"
+image = "0.25.10"
+pollster = "1.0.1"
+wgpu = "30.0.1"
+winit = "0.30.13"
