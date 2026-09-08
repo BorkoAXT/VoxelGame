@@ -112,7 +112,7 @@ impl ApplicationHandler for App {
             90.0,
             0.1,
             500.0,
-            Rad::new(0.0),
+            Rad::new(90.0_f32.to_radians()),
             Rad::new(0.0),
         );
 
@@ -367,7 +367,7 @@ impl ApplicationHandler for App {
                     });
 
                     pass.set_pipeline(render_pipeline);
-                    pass.set_bind_group(1, camera_bind_group, &[]);
+                    pass.set_bind_group(0, camera_bind_group, &[]);
                     cube.set_position(&queue);
                     cube.draw(&mut pass);
                 }
@@ -401,9 +401,13 @@ impl ApplicationHandler for App {
     ) {
         if let DeviceEvent::MouseMotion { delta: (dx, dy) } = device_event {
             if let Some(camera) = &mut self.camera {
-                camera.yaw = Rad::new(camera.yaw.as_radians() + (dx as f32 * camera.sensitivity));
+                let new_yaw = camera.yaw.as_radians() + dx as f32 * camera.sensitivity;
+                let new_pitch = camera.pitch.as_radians() - dy as f32 * camera.sensitivity;
+
+                camera.yaw = Rad::new(new_yaw);
                 camera.pitch =
-                    Rad::new(camera.pitch.as_radians() - (dy as f32 * camera.sensitivity));
+                    Rad::new(new_pitch.clamp((-89.0_f32).to_radians(), 89.0_f32.to_radians()));
+
                 // println!("camera pitch: {}", camera.pitch.as_degrees());
             }
         }

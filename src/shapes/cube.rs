@@ -70,7 +70,7 @@ impl Cube {
         }
     }
     pub fn draw<'a>(&'a self, render_pass: &mut RenderPass<'a>) {
-        render_pass.set_bind_group(0, &self.bind_group, &[]);
+        render_pass.set_bind_group(1, &self.bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
         render_pass.draw_indexed(0..INDICES_ARRAY.len() as u32, 0, 0..1);

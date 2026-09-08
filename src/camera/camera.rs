@@ -24,8 +24,8 @@ impl Camera {
         fovy: f32,
         znear: f32,
         zfar: f32,
-        _yaw: Rad,
-        _pitch: Rad,
+        yaw: Rad,
+        pitch: Rad,
     ) -> Self {
         return Self {
             eye: eye,
@@ -36,8 +36,8 @@ impl Camera {
             zfar: zfar,
             znear: znear,
             sensitivity: 0.002,
-            yaw: Rad::new(-90.0),
-            pitch: Rad::new(0.0),
+            yaw: yaw,
+            pitch: pitch,
         };
     }
     pub fn build_view_projection_matrix(&self) -> Mat4 {
