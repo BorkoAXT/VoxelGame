@@ -1,6 +1,8 @@
 mod camera;
+mod constants;
 mod shapes;
 mod typehelpers;
+mod voxel_creation;
 
 use anyhow::Result;
 
@@ -9,10 +11,10 @@ use camera::controller::CameraController;
 use camera::uniform::Camera_Uniform;
 use glam::Vec3;
 use pollster::block_on;
+use shapes::cube::Cube;
 use shapes::vertex::Vertex;
-use typehelpers::rad::Rad;
-
 use std::{borrow::Cow, sync::Arc, time::Instant};
+use typehelpers::rad::Rad;
 
 use wgpu::{
     BindGroup, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BlendState, Buffer,
@@ -49,8 +51,8 @@ struct App {
     camera_buffer: Option<Buffer>,
     camera_bind_group: Option<BindGroup>,
 
-    index_buffer: Option<Buffer>,
-    vertex_buffer: Option<Buffer>,
+    cube: Option<Cube>,
+
     render_pipeline: Option<RenderPipeline>,
 
     last_frame: Option<Instant>,
@@ -117,37 +119,6 @@ impl ApplicationHandler for App {
         let camera_uniform = Camera_Uniform::new();
 
         let camera_controller = CameraController::new(1.0);
-        let indices: [[u16; 3]; 2] = [[0, 1, 2], [1, 2, 3]];
-        let vertices: [Vertex; 4] = [
-            Vertex {
-                position: [0.0, 0.0, 0.0],
-                color: [0.6, 0.3, 0.0, 1.0],
-            },
-            Vertex {
-                position: [0.0, -1.0, 0.0],
-                color: [0.6, 0.3, 0.0, 1.0],
-            },
-            Vertex {
-                position: [1.0, 0.0, 0.0],
-                color: [0.6, 0.3, 0.0, 1.0],
-            },
-            Vertex {
-                position: [1.0, -1.0, 0.0],
-                color: [0.6, 0.3, 0.0, 1.0],
-            },
-        ];
-        let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Index buffer for a rectangle"),
-            contents: bytemuck::cast_slice(&indices),
-            usage: BufferUsages::INDEX,
-        });
-        let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Rectangle Buffer"),
-
-            contents: bytemuck::cast_slice(&vertices),
-
-            usage: BufferUsages::VERTEX,
-        });
 
         let camera_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Camera Buffer"),
@@ -196,10 +167,15 @@ impl ApplicationHandler for App {
             source: ShaderSource::Wgsl(Cow::Borrowed(include_str!("shader.wgsl"))),
         });
 
+        let mut cube = Cube::new(&device, Vec3::new(1.0, 0.0, 0.0), [1.0, 0.0, 0.0, 1.0]);
+
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline Layout"),
 
-            bind_group_layouts: &[Some(&camera_bind_group_layout)],
+            bind_group_layouts: &[
+                Some(&camera_bind_group_layout),
+                Some(&cube.bind_group_layout),
+            ],
 
             immediate_size: 0,
         });
@@ -267,11 +243,9 @@ impl ApplicationHandler for App {
         self.camera_controller = Some(camera_controller);
 
         self.camera_buffer = Some(camera_buffer);
-
         self.camera_bind_group = Some(camera_bind_group);
 
-        self.index_buffer = Some(index_buffer);
-        self.vertex_buffer = Some(vertex_buffer);
+        self.cube = Some(cube);
 
         self.render_pipeline = Some(render_pipeline);
 
@@ -326,8 +300,7 @@ impl ApplicationHandler for App {
                     Some(camera_controller),
                     Some(camera_buffer),
                     Some(camera_bind_group),
-                    Some(index_buffer),
-                    Some(vertex_buffer),
+                    Some(cube),
                     Some(render_pipeline),
                 ) = (
                     &self.surface,
@@ -338,8 +311,7 @@ impl ApplicationHandler for App {
                     &self.camera_controller,
                     &self.camera_buffer,
                     &self.camera_bind_group,
-                    &self.index_buffer,
-                    &self.vertex_buffer,
+                    &mut self.cube,
                     &self.render_pipeline,
                 )
                 else {
@@ -395,11 +367,9 @@ impl ApplicationHandler for App {
                     });
 
                     pass.set_pipeline(render_pipeline);
-
-                    pass.set_bind_group(0, Some(camera_bind_group), &[]);
-                    pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-                    pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-                    pass.draw_indexed(0..6, 0, 0..1);
+                    pass.set_bind_group(1, camera_bind_group, &[]);
+                    cube.set_position(&queue);
+                    cube.draw(&mut pass);
                 }
 
                 queue.submit(Some(encoder.finish()));
@@ -414,7 +384,8 @@ impl ApplicationHandler for App {
                 if let Some(controller) = &mut self.camera_controller {
                     if let PhysicalKey::Code(key) = event.physical_key {
                         controller.handle_key(key, event.state);
-                        println!("{key:#?} pressed");
+                        let pos = self.camera.unwrap();
+                        println!("camera x y z: {} {} {}", pos.eye.x, pos.eye.y, pos.eye.z);
                     }
                 }
             }
@@ -433,7 +404,7 @@ impl ApplicationHandler for App {
                 camera.yaw = Rad::new(camera.yaw.as_radians() + (dx as f32 * camera.sensitivity));
                 camera.pitch =
                     Rad::new(camera.pitch.as_radians() - (dy as f32 * camera.sensitivity));
-                println!("camera pitch: {}", camera.pitch.as_degrees());
+                // println!("camera pitch: {}", camera.pitch.as_degrees());
             }
         }
     }

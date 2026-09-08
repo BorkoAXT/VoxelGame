@@ -1,6 +1,12 @@
 struct Camera {
     view_projection: mat4x4<f32>,
 };
+struct Model {
+    matrix: mat4x4<f32>,
+};
+
+@group(1) @binding(0)
+var<uniform> model: Model;
 
 @group(0)
 @binding(0)
@@ -22,10 +28,10 @@ fn vs_main(input: VertexInput) -> VertexOutput {
 
     output.position =
         camera.view_projection *
+        model.matrix *
         vec4<f32>(input.position, 1.0);
 
     output.color = input.color;
-
     return output;
 }
 
