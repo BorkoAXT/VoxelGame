@@ -83,8 +83,8 @@ impl CameraController {
         }
 
         if movement.length_squared() > 0.0 {
-            camera.eye += movement.normalize() * self.speed * dt * self.sprinting_multiplier;
+            camera.position += movement.normalize() * self.speed * dt * self.sprinting_multiplier;
         }
-        camera.target = camera.eye + forward;
+        camera.target = camera.position + forward;
     }
 }

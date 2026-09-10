@@ -1,11 +1,10 @@
 mod camera;
 mod constants;
 mod shapes;
-mod typehelpers;
+mod types;
 mod voxel_creation;
 
 use anyhow::Result;
-
 use camera::camera::Camera;
 use camera::controller::CameraController;
 use camera::uniform::Camera_Uniform;
@@ -14,7 +13,8 @@ use pollster::block_on;
 use shapes::cube::Cube;
 use shapes::vertex::Vertex;
 use std::{borrow::Cow, sync::Arc, time::Instant};
-use typehelpers::rad::Rad;
+use types::color::Color;
+use types::radians::Radians;
 
 use wgpu::{
     BindGroup, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BlendState, Buffer,
@@ -35,6 +35,8 @@ use winit::{
     keyboard::PhysicalKey,
     window::{CursorGrabMode, Window, WindowId},
 };
+
+use crate::constants::{MAX_PITCH, MIN_PITCH};
 #[derive(Default)]
 struct App {
     window: Option<Arc<Window>>,
@@ -95,10 +97,7 @@ impl ApplicationHandler for App {
 
         surface.configure(&device, &config);
         window.set_cursor_visible(false);
-        window.set_cursor_position(LogicalPosition {
-            x: config.width / 2,
-            y: config.height / 2,
-        });
+
         window
             .set_cursor_grab(CursorGrabMode::Locked)
             .or_else(|_e| window.set_cursor_grab(CursorGrabMode::Confined))
@@ -112,8 +111,8 @@ impl ApplicationHandler for App {
             90.0,
             0.1,
             500.0,
-            Rad::new(90.0_f32.to_radians()),
-            Rad::new(0.0),
+            Radians::from_degrees(-90.0),
+            Radians::from_degrees(0.0),
         );
 
         let camera_uniform = Camera_Uniform::new();
@@ -167,7 +166,7 @@ impl ApplicationHandler for App {
             source: ShaderSource::Wgsl(Cow::Borrowed(include_str!("shader.wgsl"))),
         });
 
-        let mut cube = Cube::new(&device, Vec3::new(1.0, 0.0, 0.0), [1.0, 0.0, 0.0, 1.0]);
+        let cube = Cube::new(&device, Vec3::new(1.0, 0.0, 0.0), Color::BROWN);
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline Layout"),
@@ -319,7 +318,7 @@ impl ApplicationHandler for App {
                 };
 
                 camera_controller.update_camera(camera, dt);
-                //println!("eye: {}, dt: {}, target: {}", camera.eye, dt, camera.target);
+                //println!("position: {}, dt: {}, target: {}", camera.position, dt, camera.target);
                 camera_uniform.update(camera);
 
                 queue.write_buffer(camera_buffer, 0, bytemuck::bytes_of(camera_uniform));
@@ -344,12 +343,7 @@ impl ApplicationHandler for App {
                             resolve_target: None,
 
                             ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(wgpu::Color {
-                                    r: 0.192,
-                                    g: 0.345,
-                                    b: 0.570,
-                                    a: 1.0,
-                                }),
+                                load: wgpu::LoadOp::Clear(Color::SKY.as_wgpu_color()),
 
                                 store: wgpu::StoreOp::Store,
                             },
@@ -385,7 +379,10 @@ impl ApplicationHandler for App {
                     if let PhysicalKey::Code(key) = event.physical_key {
                         controller.handle_key(key, event.state);
                         let pos = self.camera.unwrap();
-                        println!("camera x y z: {} {} {}", pos.eye.x, pos.eye.y, pos.eye.z);
+                        println!(
+                            "camera x y z: {} {} {}",
+                            pos.position.x, pos.position.y, pos.position.z
+                        );
                     }
                 }
             }
@@ -404,11 +401,10 @@ impl ApplicationHandler for App {
                 let new_yaw = camera.yaw.as_radians() + dx as f32 * camera.sensitivity;
                 let new_pitch = camera.pitch.as_radians() - dy as f32 * camera.sensitivity;
 
-                camera.yaw = Rad::new(new_yaw);
-                camera.pitch =
-                    Rad::new(new_pitch.clamp((-89.0_f32).to_radians(), 89.0_f32.to_radians()));
+                camera.yaw = Radians::from_radians(new_yaw);
+                camera.pitch = Radians::from_radians(new_pitch.clamp(MIN_PITCH, MAX_PITCH));
 
-                // println!("camera pitch: {}", camera.pitch.as_degrees());
+                dbg!(camera.pitch.as_degrees(), camera.yaw.as_degrees());
             }
         }
     }

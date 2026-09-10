@@ -2,12 +2,11 @@ use glam::{Mat4, Vec3};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, Buffer, BufferUsages, Device, Queue, RenderPass, ShaderStages,
-    naga::compact::KeepUnused::No,
-    util::{BufferInitDescriptor, DeviceExt, RenderEncoder},
+    util::{BufferInitDescriptor, DeviceExt},
 };
 
 use super::vertex::Vertex;
-use crate::{App, constants::INDICES_ARRAY, voxel_creation::voxel_properties::VoxelProperties};
+use crate::{constants::INDICES_ARRAY, types::color::Color};
 pub struct Cube {
     vertex_buffer: Buffer,
     index_buffer: Buffer,
@@ -17,11 +16,11 @@ pub struct Cube {
     bind_group: BindGroup,
 
     pub position: Vec3,
-    pub color: [f32; 4],
+    pub color: Color,
 }
 impl Cube {
-    pub fn new(device: &Device, position: Vec3, color: [f32; 4]) -> Self {
-        let vertices = Vertex::build_vertices(Vec3::ZERO, color);
+    pub fn new(device: &Device, position: Vec3, color: Color) -> Self {
+        let vertices = Vertex::build_vertices(Vec3::ZERO, color.as_rgba_unit());
         let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Cube index buffer"),
             contents: bytemuck::cast_slice(&INDICES_ARRAY),
